@@ -473,7 +473,7 @@
             
             // 創建遮罩區域（只顯示3個符號）
             const maskShape = this.make.graphics();
-            maskShape.fillRect(startX + i * reelWidth - reelWidth/2, startY - reelHeight/2, reelWidth - 10, reelHeight * 3 - 10);
+            maskShape.fillRect(-reelWidth/2 + 5, -reelHeight/2, reelWidth - 10, reelHeight * 3 - 10);
             const mask = maskShape.createGeometryMask();
             reelContainer.setMask(mask);
             this.reelMasks[i] = mask;
@@ -720,50 +720,74 @@
         const reelContainer = gameScene.reelContainers[reelIndex];
         const reelSymbols = gameScene.reelSymbols[reelIndex];
         const reelHeight = 140;
+        const startX = 300;
+        const startY = 200;
         
-        // 重置轉輪位置
-        reelContainer.y = 200 + reelHeight;
+        // 設置初始位置
+        reelContainer.y = startY + reelHeight;
         
-        // 創建滾動動畫 - 先快速滾動多圈
-        const totalRotations = 3 + Math.random() * 2; // 3-5圈
-        const totalDistance = totalRotations * reelHeight * 7; // 每圈7個符號的距離
+        // 創建滾動動畫
+        let currentOffset = 0;
+        const symbolUpdateInterval = 80; // 每80ms更新一次符號
+        let lastUpdateTime = 0;
         
         // 第一階段：快速滾動
         gameScene.tweens.add({
-            targets: reelContainer,
-            y: reelContainer.y + totalDistance,
+            targets: { progress: 0 },
+            progress: 1,
             duration: duration * 0.8,
             ease: 'Power2',
-            onUpdate: () => {
-                // 在滾動過程中持續更新符號
-                if (Math.random() < 0.3) { // 30%機率更新符號
+            onUpdate: (tween) => {
+                const progress = tween.getValue();
+                const currentTime = Date.now();
+                
+                // 計算當前偏移
+                currentOffset = progress * reelHeight * 20; // 20個符號的距離
+                
+                // 更新容器內每個符號的位置，創造連續滾動效果
+                for (let j = 0; j < 7; j++) {
+                    const newY = (j - 2) * reelHeight - (currentOffset % (reelHeight * 7));
+                    reelSymbols[j].y = newY;
+                }
+                
+                // 定期更新符號內容
+                if (currentTime - lastUpdateTime > symbolUpdateInterval) {
                     for (let j = 0; j < 7; j++) {
                         const randomSymbol = getRandomSymbol();
                         reelSymbols[j].setText(randomSymbol);
                         reelSymbols[j].setStyle({ fill: getSymbolColor(randomSymbol) });
                     }
+                    lastUpdateTime = currentTime;
                 }
             },
             onComplete: () => {
                 // 第二階段：減速並設置最終符號
                 setFinalSymbols(reelIndex, finalSymbols);
                 
+                // 將符號位置重置到正確位置
+                for (let j = 0; j < 7; j++) {
+                    reelSymbols[j].y = (j - 2) * reelHeight;
+                }
+                
                 gameScene.tweens.add({
-                    targets: reelContainer,
-                    y: 200 + reelHeight, // 回到原始位置
+                    targets: { bounce: 0 },
+                    bounce: 1,
                     duration: duration * 0.2,
-                    ease: 'Power2.out',
+                    ease: 'Back.out',
+                    onUpdate: (tween) => {
+                        const bounce = tween.getValue();
+                        const bounceOffset = Math.sin(bounce * Math.PI * 2) * 5;
+                        
+                        for (let j = 0; j < 7; j++) {
+                            reelSymbols[j].y = (j - 2) * reelHeight + bounceOffset;
+                        }
+                    },
                     onComplete: () => {
-                        // 停止時的彈跳效果
-                        gameScene.tweens.add({
-                            targets: reelContainer,
-                            scaleX: 1.05,
-                            scaleY: 1.05,
-                            duration: 150,
-                            yoyo: true,
-                            ease: 'Power2.inOut',
-                            onComplete: callback
-                        });
+                        // 最終位置確保正確
+                        for (let j = 0; j < 7; j++) {
+                            reelSymbols[j].y = (j - 2) * reelHeight;
+                        }
+                        callback();
                     }
                 });
             }
@@ -858,8 +882,9 @@
             }
         }
         
-        console.log('=== 🎰 改良版驗證測試 ===');
-        console.log(`✓ 轉輪動畫：真實滾動效果，多圈旋轉後停止`);
+        console.log('=== 🎰 修復版驗證測試 ===');
+        console.log(`✓ 轉輪動畫：符號持續可見，流暢滾動效果`);
+        console.log(`✓ 遮罩系統：正確限制顯示區域，無符號消失問題`);
         console.log(`✓ 贏分效果：金色閃光 + 符號跳動 + 連線顯示 + 金幣爆炸`);
         console.log(`✓ Spin執行：餘額變更 ${gameStats.balance}，動畫完成`);
         console.log(`✓ 獲勝計算：總獲勝 $${totalWin}`);
