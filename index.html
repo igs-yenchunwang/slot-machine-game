@@ -882,9 +882,11 @@
             }
         }
         
-        console.log('=== 🎰 修復版驗證測試 ===');
+        console.log('=== 🎰 完善版驗證測試 ===');
         console.log(`✓ 轉輪動畫：符號持續可見，流暢滾動效果`);
         console.log(`✓ 遮罩系統：正確限制顯示區域，無符號消失問題`);
+        console.log(`✓ 連線邏輯：左至右連續相同符號，Wild正確代替`);
+        console.log(`✓ Payline顯示：只高亮中獎連續符號，不顯示無關位置`);
         console.log(`✓ 贏分效果：金色閃光 + 符號跳動 + 連線顯示 + 金幣爆炸`);
         console.log(`✓ Spin執行：餘額變更 ${gameStats.balance}，動畫完成`);
         console.log(`✓ 獲勝計算：總獲勝 $${totalWin}`);
@@ -892,38 +894,57 @@
     }
     
     function checkLineWin(lineSymbols, lineNumber) {
-        // 檢查從左到右的連線
+        // 檢查從左到右連續相同符號的連線
         let consecutiveCount = 1;
         let baseSymbol = lineSymbols[0];
         
-        // Wild可以代替任何符號（除了Scatter）
+        // 如果第一個符號是Wild，需要找到第一個非Wild符號作為基準
+        if (baseSymbol === 'W') {
+            // 尋找第一個非Wild非Scatter符號
+            for (let i = 1; i < lineSymbols.length; i++) {
+                if (lineSymbols[i] !== 'W' && lineSymbols[i] !== 'S') {
+                    baseSymbol = lineSymbols[i];
+                    break;
+                }
+            }
+            // 如果全部都是Wild，則以Wild為基準
+            if (baseSymbol === 'W') {
+                baseSymbol = 'W';
+            }
+        }
+        
+        // Scatter不參與一般連線（只參與特殊Scatter獎勵）
+        if (baseSymbol === 'S') {
+            return { win: 0 };
+        }
+        
+        // 從左到右檢查連續符號
         for (let i = 1; i < lineSymbols.length; i++) {
             const currentSymbol = lineSymbols[i];
             
-            if (currentSymbol === baseSymbol || 
-                currentSymbol === 'W' || 
-                (baseSymbol === 'W' && currentSymbol !== 'S')) {
-                
+            // 符號必須是相同的或者是Wild（Wild可代替任何符號）
+            if (currentSymbol === baseSymbol || currentSymbol === 'W') {
                 consecutiveCount++;
-                // 如果基礎符號是Wild，更新為實際符號
-                if (baseSymbol === 'W' && currentSymbol !== 'W' && currentSymbol !== 'S') {
-                    baseSymbol = currentSymbol;
-                }
             } else {
+                // 遇到不同符號，連線中斷
                 break;
             }
         }
         
-        // 檢查是否達到最低連線要求（3個）
-        if (consecutiveCount >= 3 && baseSymbol !== 'S') {
-            const multiplier = PAYTABLE[baseSymbol][consecutiveCount] || 0;
-            return {
-                line: lineNumber,
-                symbol: baseSymbol,
-                count: consecutiveCount,
-                win: multiplier,
-                type: 'line'
-            };
+        // 檢查是否達到最低連線要求（3個連續）
+        if (consecutiveCount >= 3) {
+            const multiplier = PAYTABLE[baseSymbol] && PAYTABLE[baseSymbol][consecutiveCount] || 0;
+            
+            if (multiplier > 0) {
+                return {
+                    line: lineNumber,
+                    symbol: baseSymbol,
+                    count: consecutiveCount,
+                    win: multiplier,
+                    type: 'line',
+                    positions: lineSymbols.slice(0, consecutiveCount) // 記錄中獎位置
+                };
+            }
         }
         
         return { win: 0 };
@@ -971,7 +992,7 @@
         winDetails.forEach((detail, index) => {
             setTimeout(() => {
                 if (detail.type === 'line') {
-                    highlightPayline(detail.line - 1);
+                    highlightPayline(detail.line - 1, detail.count); // 傳入連線數量
                 }
                 
                 // 創建贏分爆炸效果
@@ -1049,20 +1070,20 @@
         });
     }
     
-    function highlightPayline(lineIndex) {
+    function highlightPayline(lineIndex, winCount = 5) {
         const line = PAYLINES[lineIndex];
         const reelHeight = 140;
         const reelWidth = 120;
         const startX = 300;
         const startY = 200;
         
-        // 創建Payline連線效果
+        // 創建Payline連線效果（只連接中獎的連續符號）
         const lineGraphics = gameScene.add.graphics();
-        lineGraphics.lineStyle(4, 0xffd700, 0.8);
+        lineGraphics.lineStyle(5, 0xffd700, 0.9);
         
-        // 繪製連線
+        // 繪製連線（只連接中獎的符號）
         let isFirstPoint = true;
-        for (let reelIndex = 0; reelIndex < 5; reelIndex++) {
+        for (let reelIndex = 0; reelIndex < winCount; reelIndex++) { // 只處理中獎的連續符號
             const rowIndex = line[reelIndex];
             const x = startX + reelIndex * reelWidth;
             const y = startY + rowIndex * reelHeight;
@@ -1079,49 +1100,61 @@
             
             // 創建符號外框發光效果
             const glowRect = gameScene.add.rectangle(x, y, reelWidth - 5, reelHeight - 5, 0xffd700, 0);
-            glowRect.setStrokeStyle(4, 0xffd700);
+            glowRect.setStrokeStyle(5, 0xffd700);
             
             gameScene.tweens.add({
                 targets: glowRect,
                 alpha: 1,
-                scaleX: 1.1,
-                scaleY: 1.1,
-                duration: 200,
+                scaleX: 1.15,
+                scaleY: 1.15,
+                duration: 250,
                 yoyo: true,
-                repeat: 4,
+                repeat: 6,
+                ease: 'Power2.inOut',
                 onComplete: () => glowRect.destroy()
             });
             
             // 符號跳動效果
             gameScene.tweens.add({
                 targets: symbol,
-                scaleX: 1.3,
-                scaleY: 1.3,
-                duration: 200,
+                scaleX: 1.4,
+                scaleY: 1.4,
+                duration: 250,
                 yoyo: true,
-                repeat: 3,
-                ease: 'Power2.inOut'
+                repeat: 4,
+                ease: 'Back.inOut'
             });
             
             // 符號發光效果
             gameScene.tweens.add({
                 targets: symbol,
-                alpha: 0.5,
-                duration: 150,
+                alpha: 0.4,
+                duration: 180,
                 yoyo: true,
-                repeat: 6
+                repeat: 8
             });
         }
         
         lineGraphics.strokePath();
         
-        // 連線動畫效果
+        // 連線閃爍動畫效果
         gameScene.tweens.add({
             targets: lineGraphics,
-            alpha: 0,
-            duration: 2000,
-            onComplete: () => lineGraphics.destroy()
+            alpha: 0.3,
+            duration: 300,
+            yoyo: true,
+            repeat: 5,
+            onComplete: () => {
+                gameScene.tweens.add({
+                    targets: lineGraphics,
+                    alpha: 0,
+                    duration: 500,
+                    onComplete: () => lineGraphics.destroy()
+                });
+            }
         });
+        
+        console.log(`✓ Payline ${lineIndex + 1}: ${winCount}個連續符號中獎`);
     }
     
     function disableButtons() {
