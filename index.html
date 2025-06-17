@@ -471,7 +471,7 @@
                 
                 // 創建輪軸背景
                 const reelBg = this.add.rectangle(x, y, reelWidth - 10, reelHeight - 10, 0x2c3e50);
-                reelBg.setStroke(0xffd700, 2);
+                reelBg.setStrokeStyle(2, 0xffd700);
                 this.reels[i][j] = reelBg;
                 
                 // 創建符號文字
@@ -492,7 +492,7 @@
         const betButtons = [];
         BET_OPTIONS.forEach((bet, index) => {
             const button = this.add.rectangle(150 + index * 80, 650, 70, 40, 0x34495e)
-                .setStroke(0xffd700, 2)
+                .setStrokeStyle(2, 0xffd700)
                 .setInteractive()
                 .on('pointerdown', () => setBet(bet))
                 .on('pointerover', function() { this.setFillStyle(0x4a6741); })
@@ -509,7 +509,7 @@
         
         // SPIN 按鈕
         this.spinButton = this.add.rectangle(900, 650, 120, 60, 0xe74c3c)
-            .setStroke(0xffd700, 3)
+            .setStrokeStyle(3, 0xffd700)
             .setInteractive()
             .on('pointerdown', () => spin(false))
             .on('pointerover', function() { this.setFillStyle(0xc0392b); })
@@ -523,7 +523,7 @@
         
         // 快速 SPIN 按鈕
         this.fastSpinButton = this.add.rectangle(1050, 650, 120, 60, 0x27ae60)
-            .setStroke(0xffd700, 3)
+            .setStrokeStyle(3, 0xffd700)
             .setInteractive()
             .on('pointerdown', () => spin(true))
             .on('pointerover', function() { this.setFillStyle(0x229954); })
@@ -537,7 +537,7 @@
         
         // 其他功能按鈕
         const settingsButton = this.add.rectangle(50, 650, 80, 40, 0x95a5a6)
-            .setStroke(0xffd700, 2)
+            .setStrokeStyle(2, 0xffd700)
             .setInteractive()
             .on('pointerdown', () => showSettingsMenu());
         
@@ -548,7 +548,7 @@
         
         // 歷史按鈕
         const historyButton = this.add.rectangle(50, 700, 80, 40, 0x8e44ad)
-            .setStroke(0xffd700, 2)  
+            .setStrokeStyle(2, 0xffd700)
             .setInteractive()
             .on('pointerdown', () => showGameHistory());
         
@@ -559,7 +559,7 @@
         
         // 音量按鈕
         const volumeButton = this.add.rectangle(150, 700, 80, 40, 0x16a085)
-            .setStroke(0xffd700, 2)
+            .setStrokeStyle(2, 0xffd700)
             .setInteractive()
             .on('pointerdown', () => toggleVolume());
         
@@ -570,7 +570,7 @@
         
         // Payline顯示切換
         const paylinesButton = this.add.rectangle(250, 700, 80, 40, 0xd35400)
-            .setStroke(0xffd700, 2)
+            .setStrokeStyle(2, 0xffd700)
             .setInteractive()
             .on('pointerdown', () => togglePaylines());
         
