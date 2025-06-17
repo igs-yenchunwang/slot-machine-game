@@ -106,7 +106,14 @@
         .game-container {
             display: none;
             width: 100vw;
-            height: 100vh;
+            height: calc(100vh - 40px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-container canvas {
+            display: block;
+            margin: 0 auto;
         }
         
         .notification-modal {
@@ -361,6 +368,10 @@
                 preload: preload,
                 create: create,
                 update: update
+            },
+            scale: {
+                mode: Phaser.Scale.FIT,
+                autoCenter: Phaser.Scale.CENTER_BOTH
             }
         };
         
@@ -373,6 +384,9 @@
     }
     
     function create() {
+        // 設置場景背景色
+        this.cameras.main.setBackgroundColor('#1a1a2e');
+        
         // 創建遊戲場景
         createUI.call(this);
         createReels.call(this);
@@ -385,6 +399,10 @@
         console.log('✓ 警示條已顯示');
         console.log('✓ 主要UI區塊已建立');
         console.log('✓ 所有按鈕已創建且可操作');
+        
+        // 添加調試信息
+        console.log('✓ 遊戲canvas尺寸:', this.scale.width, 'x', this.scale.height);
+        console.log('✓ 場景背景色已設置');
     }
     
     function update() {
@@ -392,6 +410,9 @@
     }
     
     function createUI() {
+        // 添加測試背景確保Phaser正常工作
+        this.add.rectangle(600, 400, 1180, 780, 0x0f0f23, 0.8);
+        
         // 創建標題
         this.add.text(600, 50, '5輪3格 吃角子老虎機', {
             fontSize: '32px',
