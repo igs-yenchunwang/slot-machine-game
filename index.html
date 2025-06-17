@@ -452,11 +452,9 @@
     }
     
     function createReels() {
-        // 創建5x3輪軸區域
+        // 創建5x3輪軸區域 - 簡化版，不使用遮罩
         this.reels = [];
         this.reelSymbols = [];
-        this.reelContainers = [];
-        this.reelMasks = [];
         
         const reelWidth = 120;
         const reelHeight = 140;
@@ -467,37 +465,25 @@
             this.reels[i] = [];
             this.reelSymbols[i] = [];
             
-            // 創建輪軸容器
-            const reelContainer = this.add.container(startX + i * reelWidth, startY + reelHeight);
-            this.reelContainers[i] = reelContainer;
-            
-            // 創建遮罩區域（只顯示3個符號）
-            const maskShape = this.make.graphics();
-            maskShape.fillRect(-reelWidth/2 + 5, -reelHeight/2, reelWidth - 10, reelHeight * 3 - 10);
-            const mask = maskShape.createGeometryMask();
-            reelContainer.setMask(mask);
-            this.reelMasks[i] = mask;
-            
-            // 創建完整轉輪（包含更多符號用於滾動效果）
-            for (let j = -2; j < 5; j++) {  // 7個符號：上方2個 + 可見3個 + 下方2個
-                const y = j * reelHeight;
+            // 直接創建可見的3個格子
+            for (let j = 0; j < 3; j++) {
+                const x = startX + i * reelWidth;
+                const y = startY + j * reelHeight;
                 
                 // 創建輪軸背景
-                const reelBg = this.add.rectangle(0, y, reelWidth - 10, reelHeight - 10, 0x2c3e50);
+                const reelBg = this.add.rectangle(x, y, reelWidth - 10, reelHeight - 10, 0x2c3e50);
                 reelBg.setStrokeStyle(2, 0xffd700);
-                reelContainer.add(reelBg);
-                this.reels[i][j + 2] = reelBg;
+                this.reels[i][j] = reelBg;
                 
                 // 創建符號文字
                 const symbol = getRandomSymbol();
-                const symbolText = this.add.text(0, y, symbol, {
+                const symbolText = this.add.text(x, y, symbol, {
                     fontSize: '48px',
                     fontWeight: 'bold',
                     fill: getSymbolColor(symbol)
                 }).setOrigin(0.5);
                 
-                reelContainer.add(symbolText);
-                this.reelSymbols[i][j + 2] = symbolText;
+                this.reelSymbols[i][j] = symbolText;
             }
         }
     }
@@ -717,96 +703,44 @@
     }
     
     function animateReel(reelIndex, duration, finalSymbols, callback) {
-        const reelContainer = gameScene.reelContainers[reelIndex];
         const reelSymbols = gameScene.reelSymbols[reelIndex];
-        const reelHeight = 140;
-        const startX = 300;
-        const startY = 200;
         
-        // 確保初始符號可見
-        for (let j = 0; j < 7; j++) {
-            reelSymbols[j].y = (j - 2) * reelHeight;
-            reelSymbols[j].setVisible(true);
-            reelSymbols[j].setAlpha(1);
-        }
+        // 簡單的旋轉動畫 - 直接更換符號內容
+        let animationTime = 0;
+        const animationInterval = 80; // 每80ms更換一次符號
         
-        // 設置初始位置
-        reelContainer.y = startY + reelHeight;
-        
-        // 創建滾動動畫 - 改用容器移動而非符號位置更新
-        const totalRotations = 4 + Math.random() * 3; // 4-7圈
-        const totalDistance = totalRotations * reelHeight * 7;
-        
-        // 在動畫過程中定期更新符號
-        const symbolUpdateInterval = setInterval(() => {
-            for (let j = 0; j < 7; j++) {
+        const spinInterval = setInterval(() => {
+            animationTime += animationInterval;
+            
+            // 在動畫過程中隨機更換符號
+            for (let j = 0; j < 3; j++) {
                 const randomSymbol = getRandomSymbol();
                 reelSymbols[j].setText(randomSymbol);
                 reelSymbols[j].setStyle({ fill: getSymbolColor(randomSymbol) });
             }
-        }, 100);
-        
-        // 第一階段：快速滾動
-        gameScene.tweens.add({
-            targets: reelContainer,
-            y: reelContainer.y + totalDistance,
-            duration: duration * 0.8,
-            ease: 'Power2',
-            onComplete: () => {
-                // 停止符號更新
-                clearInterval(symbolUpdateInterval);
+            
+            if (animationTime >= duration) {
+                clearInterval(spinInterval);
                 
                 // 設置最終符號
-                setFinalSymbols(reelIndex, finalSymbols);
+                for (let j = 0; j < 3; j++) {
+                    reelSymbols[j].setText(finalSymbols[j]);
+                    reelSymbols[j].setStyle({ fill: getSymbolColor(finalSymbols[j]) });
+                }
                 
-                // 第二階段：減速回到正確位置
+                // 停止動畫效果
                 gameScene.tweens.add({
-                    targets: reelContainer,
-                    y: startY + reelHeight,
-                    duration: duration * 0.2,
-                    ease: 'Back.out',
-                    onComplete: () => {
-                        // 確保最終位置和符號正確
-                        reelContainer.y = startY + reelHeight;
-                        for (let j = 0; j < 7; j++) {
-                            reelSymbols[j].y = (j - 2) * reelHeight;
-                        }
-                        
-                        // 彈跳效果
-                        gameScene.tweens.add({
-                            targets: reelContainer,
-                            scaleX: 1.02,
-                            scaleY: 1.02,
-                            duration: 150,
-                            yoyo: true,
-                            ease: 'Power2.inOut',
-                            onComplete: callback
-                        });
-                    }
+                    targets: reelSymbols,
+                    scaleX: 1.1,
+                    scaleY: 1.1,
+                    duration: 100,
+                    yoyo: true,
+                    onComplete: callback
                 });
             }
-        });
+        }, animationInterval);
     }
     
-    function setFinalSymbols(reelIndex, finalSymbols) {
-        const reelSymbols = gameScene.reelSymbols[reelIndex];
-        
-        // 設置可見的3個符號（索引2,3,4對應顯示位置）
-        for (let j = 0; j < 3; j++) {
-            reelSymbols[j + 2].setText(finalSymbols[j]);
-            reelSymbols[j + 2].setStyle({ fill: getSymbolColor(finalSymbols[j]) });
-        }
-        
-        // 設置其他位置的隨機符號
-        for (let j = 0; j < 2; j++) {
-            reelSymbols[j].setText(getRandomSymbol());
-            reelSymbols[j].setStyle({ fill: getSymbolColor(reelSymbols[j].text) });
-        }
-        for (let j = 5; j < 7; j++) {
-            reelSymbols[j].setText(getRandomSymbol());
-            reelSymbols[j].setStyle({ fill: getSymbolColor(reelSymbols[j].text) });
-        }
-    }
     
     function calculateWinnings(symbols) {
         let totalWin = 0;
@@ -1087,7 +1021,7 @@
             }
             
             // 高亮該線上的符號
-            const symbol = gameScene.reelSymbols[reelIndex][rowIndex + 2]; // +2因為容器偏移
+            const symbol = gameScene.reelSymbols[reelIndex][rowIndex]; // 直接使用rowIndex
             
             // 創建符號外框發光效果
             const glowRect = gameScene.add.rectangle(x, y, reelWidth - 5, reelHeight - 5, 0xffd700, 0);
